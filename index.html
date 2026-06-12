@@ -110,7 +110,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.5</span></h1>
+    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.6</span></h1>
     <span class="status"><span class="dot loading" id="connDot"></span><span id="connText">检测连接...</span></span>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -302,7 +302,7 @@ function parseBroadcast(text) {
     };
     // Combine building + room number if both exist
     if (entry.building && entry.room) {
-      entry.building = entry.building + entry.room;
+      entry.building = entry.building + '-' + entry.room;
     }
     for (const [key, regex] of Object.entries(patterns)) {
       const match = block.match(regex);
