@@ -110,7 +110,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.8</span></h1>
+    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.9</span></h1>
     <span class="status"><span class="dot loading" id="connDot"></span><span id="connText">检测连接...</span></span>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -303,6 +303,15 @@ function parseBroadcast(text) {
     for (const [key, regex] of Object.entries(patterns)) {
       const match = block.match(regex);
       if (match) entry[key] = match[1].trim();
+    }
+    // Auto-split room from building if no explicit 房号 field
+    // e.g. "星澜之城2-523" → building:"星澜之城" room:"2-523"
+    if (!entry.room && entry.building) {
+      const m = entry.building.match(/^(.+?)\s*(\d[\d\-\s–—]*)$/);
+      if (m) {
+        entry.building = m[1].trim();
+        entry.room = m[2].trim();
+      }
     }
     return entry;
   }
