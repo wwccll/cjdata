@@ -282,6 +282,7 @@ function parseBroadcast(text) {
     const entry = {};
     const patterns = {
       building: /(?:楼盘地址|楼盘名称|楼盘)\s*[:：]\s*(.+)/i,
+      room: /房号\s*[:：]\s*(.+)/i,
       area: /面积\s*[:：]\s*(.+)/i,
       decoration: /装修\s*[:：]\s*(.+)/i,
       maintainer: /维护人\s*[:：]\s*(.+)/i,
@@ -291,6 +292,10 @@ function parseBroadcast(text) {
       date: /(?:成交时间|成交日期|成交时间)\s*[:：]\s*(.+)/i,
       propertyId: /房源编号\s*[:：]\s*(.+)/i,
     };
+    // Combine building + room number if both exist
+    if (entry.building && entry.room) {
+      entry.building = entry.building + entry.room;
+    }
     for (const [key, regex] of Object.entries(patterns)) {
       const match = block.match(regex);
       if (match) entry[key] = match[1].trim();
