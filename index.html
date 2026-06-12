@@ -289,12 +289,12 @@ function parseBroadcast(text) {
   function extract(block) {
     const entry = {};
     const patterns = {
-      building: /(?:楼盘地址|楼盘名称|楼盘)\s*[:：]\s*(.+)/i,
+      building: /(?:地址|楼盘地址|楼盘名称|楼盘)\s*[:：]\s*(.+)/i,
       room: /房号\s*[:：]\s*(.+)/i,
       area: /面积\s*[:：]\s*(.+)/i,
       decoration: /装修\s*[:：]\s*(.+)/i,
       maintainer: /维护人\s*[:：]\s*(.+)/i,
-      listingPrice: /(?:挂牌价格|挂牌价)\s*[:：]\s*(.+)/i,
+      listingPrice: /(?:挂价|挂牌价格|挂牌价)\s*[:：]\s*(.+)/i,
       transactionPrice: /(?:成交价格|成交价)\s*[:：]\s*(.+)/i,
       company: /(?:成交公司|公司)\s*[:：]\s*(.+)/i,
       date: /(?:成交时间|成交日期|成交时间)\s*[:：]\s*(.+)/i,
