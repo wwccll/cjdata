@@ -110,7 +110,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.3</span></h1>
+    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.4</span></h1>
     <span class="status"><span class="dot loading" id="connDot"></span><span id="connText">检测连接...</span></span>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -298,7 +298,7 @@ function parseBroadcast(text) {
       transactionPrice: /(?:最终成交价|实际成交价|成交价格|成交价|签约价)\s*[:：]\s*(.+)/i,
       company: /(?:签约公司|中介公司|成交公司|平台|公司)\s*[:：]\s*(.+)/i,
       date: /(?:签约时间|签约日期|成交时间|成交日期|时间)\s*[:：]\s*(.+)/i,
-      propertyId: /(?:房源编号|编号|ID|房源号)\s*[:：]\s*(.+)/i,
+      propertyId: /(?:房源编号|物业编号|房屋编号|编号|房源号|房源ID)\s*[:：]\s*(.+)/i,
     };
     // Combine building + room number if both exist
     if (entry.building && entry.room) {
