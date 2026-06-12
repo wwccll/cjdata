@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>成交数据管理</title>
-<!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --primary: #1a73e8; --success: #0d9488; --warning: #f59e0b; --danger: #ef4444;
@@ -21,7 +19,7 @@
     box-shadow:0 2px 8px rgba(0,0,0,.15);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px;
   }
   .header h1{font-size:1.1rem;font-weight:600}
-  .header .status{font-size:.7rem;opacity:.8;display:flex;align-items:center;gap:4px}
+  .header .status{font-size:.7rem;opacity:.9;display:flex;align-items:center;gap:4px}
   .header .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
   .dot.online{background:#4ade80} .dot.offline{background:#f87171} .dot.loading{background:#fbbf24;animation:pulse .8s infinite}
   @keyframes pulse{50%{opacity:.4}}
@@ -105,17 +103,6 @@
 
   .empty{text-align:center;padding:40px 16px;color:var(--text2)}
   .empty .big{font-size:2.5rem;margin-bottom:6px}
-
-  .config-overlay{
-    position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;
-    justify-content:center;z-index:300;
-  }
-  .config-box{background:#fff;border-radius:12px;padding:28px;max-width:440px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-  .config-box h3{margin-bottom:8px}
-  .config-box p{font-size:.8rem;color:var(--text2);margin-bottom:16px}
-  .config-box label{font-size:.78rem;font-weight:600;display:block;margin:10px 0 4px}
-  .config-box input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-family:monospace}
-  .config-box input:focus{outline:none;border-color:var(--primary)}
 </style>
 </head>
 <body>
@@ -124,11 +111,11 @@
 <div class="header">
   <div>
     <h1>📋 成交数据管理</h1>
-    <span class="status"><span class="dot loading" id="connDot"></span><span id="connText">连接中...</span></span>
+    <span class="status"><span class="dot loading" id="connDot"></span><span id="connText">检测连接...</span></span>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
     <button class="btn btn-sm btn-success" onclick="exportCSV()">📥 导出CSV</button>
-    <button class="btn btn-sm btn-outline" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="showConfig()">⚙️ 配置</button>
+    <button class="btn btn-sm btn-outline" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="syncFromCloud()">🔄 刷新</button>
   </div>
 </div>
 
@@ -148,10 +135,11 @@
         <div class="card-title">📝 粘贴成交播报</div>
         <textarea id="pasteInput" placeholder="在此粘贴成交播报文本，支持多条批量粘贴&#10;&#10;格式示例：&#10;成交播报&#10;楼盘:星澜之城2-523&#10;面积：54.51&#10;挂牌价: 138万&#10;成交价: 122万&#10;成交公司:贝壳德佑&#10;成交时间：2026.6.11&#10;房源编号：103147774694"></textarea>
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="parseAndSave()">🔍 解析并录入</button>
+          <button class="btn btn-primary" onclick="parseAndSave()" id="btnParse">🔍 解析并录入</button>
           <button class="btn btn-outline" onclick="document.getElementById('pasteInput').value=''">✕ 清空</button>
           <button class="btn btn-outline" onclick="loadDemo()">📋 填入示例</button>
         </div>
+        <div id="parseLog" style="margin-top:8px;font-size:.75rem;color:var(--text2);display:none"></div>
       </div>
       <div class="card">
         <div class="card-title">📢 最近成交播报</div>
@@ -187,115 +175,101 @@
   </div>
 </div>
 
-<!-- CONFIG POPUP -->
-<div class="config-overlay" id="configOverlay" style="display:none">
-  <div class="config-box">
-    <h3>⚙️ Supabase 连接配置</h3>
-    <p>在 <a href="https://supabase.com" target="_blank">supabase.com</a> 创建项目后，在 Settings → API 中复制这两个值。</p>
-    <label>Project URL</label>
-    <input type="text" id="configUrl" placeholder="https://xxxxx.supabase.co">
-    <label>anon public key</label>
-    <input type="text" id="configKey" placeholder="eyJhbGci...">
-    <div style="margin-top:16px;display:flex;gap:8px">
-      <button class="btn btn-primary" onclick="saveConfig()">💾 保存并连接</button>
-      <button class="btn btn-outline" onclick="document.getElementById('configOverlay').style.display='none'">取消</button>
-    </div>
-    <p style="margin-top:12px;font-size:.72rem;color:var(--text2)">配置保存在浏览器本地。换设备需重新填写。</p>
-  </div>
-</div>
-
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ==================== SUPABASE SETUP ====================
-// 内置连接信息（publishable key 可安全公开在客户端）
+// ==================== SUPABASE REST API ====================
 const SUPABASE_URL = 'https://nyhkczxlzpsyecsnscgt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_7iCQ17nrZVSDYfZKMP3TXQ_mQUpw8Sm';
-let supabase = null;
 
-function getConfig() {
-  try {
-    const url = localStorage.getItem('sb_url') || SUPABASE_URL;
-    const key = localStorage.getItem('sb_key') || SUPABASE_KEY;
-    return { url, key };
-  } catch(e) { return { url: SUPABASE_URL, key: SUPABASE_KEY }; }
-}
+let records = [];
+let connected = false;
 
-function initSupabase() {
-  const { url, key } = getConfig();
-  supabase = window.supabase.createClient(url, key);
-  checkConnection();
-  loadAllData();
-}
-
-async function checkConnection() {
-  if (!supabase) return;
-  try {
-    const { error } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
-    const dot = document.getElementById('connDot');
-    const txt = document.getElementById('connText');
-    if (error) {
-      dot.className = 'dot offline';
-      txt.textContent = '连接失败: ' + error.message;
-    } else {
-      dot.className = 'dot online';
-      txt.textContent = '云端已连接';
-    }
-  } catch(e) {
-    document.getElementById('connDot').className = 'dot offline';
-    document.getElementById('connText').textContent = '离线';
+// Generic REST API call
+async function api(method, path, body) {
+  const url = SUPABASE_URL + path;
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json'
+  };
+  if (method === 'POST' || method === 'PATCH') {
+    headers['Prefer'] = 'return=representation';
   }
+
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(method + ' ' + path + ' → ' + res.status + ': ' + err);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
 }
 
 // ==================== DATA LAYER ====================
-let records = [];
-
 async function loadAllData() {
-  if (!supabase) return;
   try {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .order('date', { ascending: false });
-
-    if (error) {
-      console.error('加载失败:', error);
-      toast('加载数据失败: ' + error.message, 'warn');
-      return;
-    }
+    const data = await api('GET', '/rest/v1/transactions?select=*&order=date.desc');
     records = data || [];
+    setConnected(true);
+    console.log('✅ 从云端加载了 ' + records.length + ' 条记录');
   } catch(e) {
-    console.error('加载异常:', e);
+    console.error('加载失败:', e.message);
+    setConnected(false);
   }
   renderAll();
 }
 
 async function saveRecord(record) {
-  if (!supabase) return false;
-  const { error } = await supabase.from('transactions').upsert(record, { onConflict: 'property_id' });
-  if (error) {
-    toast('保存失败: ' + error.message, 'warn');
-    return false;
+  // Check if exists by property_id
+  const existing = await api('GET', '/rest/v1/transactions?property_id=eq.' + encodeURIComponent(record.property_id) + '&select=id');
+  if (existing && existing.length > 0) {
+    // Update existing
+    return await api('PATCH', '/rest/v1/transactions?property_id=eq.' + encodeURIComponent(record.property_id), record);
+  } else {
+    // Insert new
+    return await api('POST', '/rest/v1/transactions', record);
   }
-  return true;
 }
 
 async function deleteFromDB(propertyId) {
-  if (!supabase) return false;
-  const { error } = await supabase.from('transactions').delete().eq('property_id', propertyId);
-  if (error) {
-    toast('删除失败: ' + error.message, 'warn');
-    return false;
-  }
-  return true;
+  return await api('DELETE', '/rest/v1/transactions?property_id=eq.' + encodeURIComponent(propertyId));
 }
 
-// Sync local changes to cloud
-async function syncToCloud() {
-  if (!supabase) return;
+function setConnected(val) {
+  connected = val;
+  const dot = document.getElementById('connDot');
+  const txt = document.getElementById('connText');
+  if (val) {
+    dot.className = 'dot online';
+    txt.textContent = '☁️ 云端已连接';
+  } else {
+    dot.className = 'dot offline';
+    txt.textContent = '⚠️ 连接失败，点🔄刷新';
+  }
+}
+
+async function checkConnection() {
+  if (connected) return true;
+  try {
+    await api('GET', '/rest/v1/transactions?select=id&limit=1');
+    setConnected(true);
+    return true;
+  } catch(e) {
+    setConnected(false);
+    return false;
+  }
+}
+
+async function syncFromCloud() {
+  document.getElementById('connDot').className = 'dot loading';
+  document.getElementById('connText').textContent = '同步中...';
   await loadAllData();
-  toast('已从云端同步最新数据', 'success');
+  toast('已刷新 ' + records.length + ' 条记录', 'success');
 }
 
 // ==================== PARSER ====================
@@ -314,7 +288,7 @@ function parseBroadcast(text) {
       listingPrice: /(?:挂牌价格|挂牌价)\s*[:：]\s*(.+)/i,
       transactionPrice: /(?:成交价格|成交价)\s*[:：]\s*(.+)/i,
       company: /(?:成交公司|公司)\s*[:：]\s*(.+)/i,
-      date: /(?:成交时间|成交日期)\s*[:：]\s*(.+)/i,
+      date: /(?:成交时间|成交日期|成交时间)\s*[:：]\s*(.+)/i,
       propertyId: /房源编号\s*[:：]\s*(.+)/i,
     };
     for (const [key, regex] of Object.entries(patterns)) {
@@ -338,9 +312,13 @@ function parseBroadcast(text) {
 }
 
 async function parseAndSave() {
-  if (!supabase) {
-    toast('请先配置 Supabase 连接（点击右上角⚙️）', 'warn');
-    showConfig();
+  const btn = document.getElementById('btnParse');
+  const log = document.getElementById('parseLog');
+
+  // Ensure connection
+  const ok = await checkConnection();
+  if (!ok) {
+    toast('⚠️ 云端未连接，点击右上角🔄刷新重试', 'warn');
     return;
   }
 
@@ -348,7 +326,24 @@ async function parseAndSave() {
   if (!input) { toast('请先粘贴成交播报文本', 'warn'); return; }
 
   const parsed = parseBroadcast(input);
-  if (parsed.length === 0) { toast('未识别到成交数据，请检查格式', 'warn'); return; }
+  log.style.display = 'block';
+  log.innerHTML = '📋 识别到 <b>' + parsed.length + '</b> 条数据，正在录入...';
+
+  if (parsed.length === 0) {
+    log.innerHTML = '❌ 未识别到成交数据，请检查格式';
+    toast('未识别到数据，请检查格式', 'warn');
+    return;
+  }
+
+  // Show what was parsed
+  let detailHtml = '';
+  parsed.forEach((p, i) => {
+    detailHtml += '  <br>[' + (i+1) + '] 楼盘=' + (p.building || '?') + ' 编号=' + (p.propertyId || '?') + ' 成交价=' + (p.transactionPrice || '?');
+  });
+  log.innerHTML += detailHtml;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ 录入中...';
 
   let newCount = 0, updateCount = 0;
   const now = new Date().toISOString();
@@ -367,60 +362,62 @@ async function parseAndSave() {
     const listingPriceRaw = entry.listingPrice || null;
     const transactionPriceRaw = entry.transactionPrice || null;
 
-    // Check existing
+    // Check if exists locally
     const existing = records.find(r => entry.propertyId && r.property_id === entry.propertyId);
 
-    if (existing) {
-      const oldPrice = existing.transaction_price;
-      let priceHistory = existing.price_history || [];
-      if (oldPrice !== transactionPrice && transactionPrice) {
-        priceHistory.push({
-          price: existing.transaction_price_raw || (existing.transaction_price ? existing.transaction_price + '万' : ''),
-          date: existing.date,
-          recordedAt: existing.updated_at || existing.created_at
-        });
+    try {
+      if (existing) {
+        let priceHistory = existing.price_history || [];
+        if (existing.transaction_price !== transactionPrice && transactionPrice) {
+          priceHistory.push({
+            price: existing.transaction_price_raw || (existing.transaction_price ? existing.transaction_price + '万' : ''),
+            date: existing.date,
+            recordedAt: existing.updated_at || existing.created_at
+          });
+        }
+
+        const updated = {
+          building: entry.building || existing.building,
+          area: area || existing.area,
+          decoration: entry.decoration || existing.decoration || '',
+          maintainer: entry.maintainer || existing.maintainer || '',
+          listing_price: listingPrice || existing.listing_price,
+          listing_price_raw: listingPriceRaw || existing.listing_price_raw,
+          transaction_price: transactionPrice || existing.transaction_price,
+          transaction_price_raw: transactionPriceRaw || existing.transaction_price_raw,
+          company: entry.company || existing.company || '',
+          date: entry.date || existing.date || '',
+          property_id: entry.propertyId || existing.property_id,
+          price_history: priceHistory,
+          update_count: (existing.update_count || 0) + 1,
+          updated_at: now
+        };
+        await saveRecord(updated);
+        updateCount++;
+      } else {
+        const record = {
+          property_id: entry.propertyId || '',
+          building: entry.building || '',
+          area: area || null,
+          decoration: entry.decoration || '',
+          maintainer: entry.maintainer || '',
+          listing_price: listingPrice || null,
+          listing_price_raw: listingPriceRaw || null,
+          transaction_price: transactionPrice || null,
+          transaction_price_raw: transactionPriceRaw || null,
+          company: entry.company || '',
+          date: entry.date || '',
+          price_history: [],
+          update_count: 0,
+          created_at: now,
+          updated_at: now
+        };
+        await saveRecord(record);
+        newCount++;
       }
-
-      const updated = {
-        ...existing,
-        building: entry.building || existing.building,
-        area: area || existing.area,
-        decoration: entry.decoration || existing.decoration,
-        maintainer: entry.maintainer || existing.maintainer,
-        listing_price: listingPrice || existing.listing_price,
-        listing_price_raw: listingPriceRaw || existing.listing_price_raw,
-        transaction_price: transactionPrice || existing.transaction_price,
-        transaction_price_raw: transactionPriceRaw || existing.transaction_price_raw,
-        company: entry.company || existing.company,
-        date: entry.date || existing.date,
-        property_id: entry.propertyId || existing.property_id,
-        price_history: priceHistory,
-        update_count: (existing.update_count || 0) + 1,
-        updated_at: now
-      };
-
-      const ok = await saveRecord(updated);
-      if (ok) updateCount++;
-    } else {
-      const record = {
-        property_id: entry.propertyId || '',
-        building: entry.building || '',
-        area: area || null,
-        decoration: entry.decoration || '',
-        maintainer: entry.maintainer || '',
-        listing_price: listingPrice || null,
-        listing_price_raw: listingPriceRaw || null,
-        transaction_price: transactionPrice || null,
-        transaction_price_raw: transactionPriceRaw || null,
-        company: entry.company || '',
-        date: entry.date || '',
-        price_history: [],
-        update_count: 0,
-        created_at: now,
-        updated_at: now
-      };
-      const ok = await saveRecord(record);
-      if (ok) newCount++;
+    } catch(e) {
+      console.error('保存失败:', e);
+      log.innerHTML += '<br>❌ 保存失败: ' + e.message;
     }
   }
 
@@ -428,18 +425,24 @@ async function parseAndSave() {
   document.getElementById('pasteInput').value = '';
 
   const msg = [];
-  if (newCount) msg.push(`新增 ${newCount} 条`);
-  if (updateCount) msg.push(`更新 ${updateCount} 条`);
-  if (msg.length) toast(msg.join('，') + ' → 已同步云端 ☁️', 'success');
-  else toast('录入失败，请检查连接', 'warn');
+  if (newCount) msg.push('新增 ' + newCount + ' 条');
+  if (updateCount) msg.push('更新 ' + updateCount + ' 条');
+  log.innerHTML += '<br>✅ 完成！' + (msg.length ? msg.join('，') : '无变化');
+  if (msg.length) toast(msg.join('，') + ' → 已同步 ☁️', 'success');
+
+  btn.disabled = false;
+  btn.textContent = '🔍 解析并录入';
 }
 
+// ==================== DELETE ====================
 async function deleteRecord(propertyId) {
   if (!confirm('确定删除该条成交记录？')) return;
-  const ok = await deleteFromDB(propertyId);
-  if (ok) {
+  try {
+    await deleteFromDB(propertyId);
     await loadAllData();
-    toast('已删除并同步云端', 'warn');
+    toast('已删除并同步', 'warn');
+  } catch(e) {
+    toast('删除失败: ' + e.message, 'warn');
   }
 }
 
@@ -465,36 +468,35 @@ function renderAll() {
 function renderTable() {
   const filtered = getFiltered();
   const tbody = document.getElementById('tableBody');
-  document.getElementById('resultCount').textContent = `共 ${filtered.length} 条`;
+  document.getElementById('resultCount').textContent = '共 ' + filtered.length + ' 条';
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text2)">暂无数据，请在左侧粘贴成交播报</td></tr>`;
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text2)">暂无数据，请在左侧粘贴成交播报</td></tr>';
     return;
   }
 
   tbody.innerHTML = filtered.map(r => {
     const hasHistory = r.price_history && r.price_history.length > 0;
-    const updateBadge = r.update_count > 0 ? `<span class="tag-duplicate">更新${r.update_count}次</span>` : '';
+    const updateBadge = r.update_count > 0 ? '<span class="tag-duplicate">更新' + r.update_count + '次</span>' : '';
     const showListing = r.listing_price_raw && r.listing_price_raw !== String(r.listing_price)
       ? esc(r.listing_price_raw) : (r.listing_price ? r.listing_price + '万' : '--');
     const showTransaction = r.transaction_price_raw && r.transaction_price_raw !== String(r.transaction_price)
       ? esc(r.transaction_price_raw) : (r.transaction_price ? r.transaction_price + '万' : '--');
 
-    return `<tr>
-      <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:.75rem">${esc(r.property_id) || '--'}</code></td>
-      <td><strong>${esc(r.building) || '--'}</strong></td>
-      <td>${r.area ? r.area + '㎡' : '--'}</td>
-      <td>${esc(r.decoration) || '--'}</td>
-      <td>${esc(r.maintainer) || '--'}</td>
-      <td>${r.listing_price ? '<span style="color:var(--text2)">' + showListing + '</span>' : '--'}</td>
-      <td><strong style="color:#059669">${showTransaction}</strong>${updateBadge}</td>
-      <td>${esc(r.company) || '--'}</td>
-      <td>${esc(r.date) || '--'}</td>
-      <td style="display:flex;gap:4px">
-        <button class="btn btn-sm btn-warning" onclick="showHistory('${r.id}')" ${hasHistory ? '' : 'disabled'}>📜</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteRecord('${esc(r.property_id)}')">✕</button>
-      </td>
-    </tr>`;
+    return '<tr>' +
+      '<td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:.75rem">' + esc(r.property_id || '--') + '</code></td>' +
+      '<td><strong>' + esc(r.building || '--') + '</strong></td>' +
+      '<td>' + (r.area ? r.area + '㎡' : '--') + '</td>' +
+      '<td>' + esc(r.decoration || '--') + '</td>' +
+      '<td>' + esc(r.maintainer || '--') + '</td>' +
+      '<td>' + (r.listing_price ? '<span style="color:var(--text2)">' + showListing + '</span>' : '--') + '</td>' +
+      '<td><strong style="color:#059669">' + showTransaction + '</strong>' + updateBadge + '</td>' +
+      '<td>' + esc(r.company || '--') + '</td>' +
+      '<td>' + esc(r.date || '--') + '</td>' +
+      '<td style="display:flex;gap:4px">' +
+        '<button class="btn btn-sm btn-warning" onclick="showHistory(\'' + r.id + '\')" ' + (hasHistory ? '' : 'disabled') + '>📜</button>' +
+        '<button class="btn btn-sm btn-danger" onclick="deleteRecord(\'' + esc(r.property_id) + '\')">✕</button>' +
+      '</td></tr>';
   }).join('');
 }
 
@@ -510,18 +512,18 @@ function renderBroadcasts() {
       ? esc(r.listing_price_raw) : (r.listing_price ? r.listing_price + '万' : '--');
     const showTransaction = r.transaction_price_raw && r.transaction_price_raw !== String(r.transaction_price)
       ? esc(r.transaction_price_raw) : (r.transaction_price ? r.transaction_price + '万' : '--');
-    return `<div class="broadcast-card">
-      <div class="line"><span class="key">🏢 楼盘:</span><span class="val">${esc(r.building)}</span></div>
-      <div class="line"><span class="key">📐 面积:</span><span class="val">${r.area ? r.area + '㎡' : '--'}</span></div>
-      <div class="line"><span class="key">🔧 装修:</span><span class="val">${esc(r.decoration) || '--'}</span></div>
-      <div class="line"><span class="key">👤 维护人:</span><span class="val">${esc(r.maintainer) || '--'}</span></div>
-      <div class="line"><span class="key">🏷 挂牌价:</span><span class="val">${showListing}</span></div>
-      <div class="line"><span class="key">💰 成交价:</span><span class="price-tag">${showTransaction}</span></div>
-      <div class="line"><span class="key">🏠 成交公司:</span><span class="val">${esc(r.company)}</span></div>
-      <div class="line"><span class="key">📅 成交时间:</span><span class="val">${esc(r.date)}</span></div>
-      <div class="line"><span class="key">🔢 房源编号:</span><span class="val"><code>${esc(r.property_id)}</code></span></div>
-      ${r.update_count > 0 ? `<div style="margin-top:3px"><span class="tag-duplicate">🔄 已更新 ${r.update_count} 次</span></div>` : ''}
-    </div>`;
+    return '<div class="broadcast-card">' +
+      '<div class="line"><span class="key">🏢 楼盘:</span><span class="val">' + esc(r.building) + '</span></div>' +
+      '<div class="line"><span class="key">📐 面积:</span><span class="val">' + (r.area ? r.area + '㎡' : '--') + '</span></div>' +
+      '<div class="line"><span class="key">🔧 装修:</span><span class="val">' + esc(r.decoration || '--') + '</span></div>' +
+      '<div class="line"><span class="key">👤 维护人:</span><span class="val">' + esc(r.maintainer || '--') + '</span></div>' +
+      '<div class="line"><span class="key">🏷 挂牌价:</span><span class="val">' + showListing + '</span></div>' +
+      '<div class="line"><span class="key">💰 成交价:</span><span class="price-tag">' + showTransaction + '</span></div>' +
+      '<div class="line"><span class="key">🏠 成交公司:</span><span class="val">' + esc(r.company) + '</span></div>' +
+      '<div class="line"><span class="key">📅 成交时间:</span><span class="val">' + esc(r.date) + '</span></div>' +
+      '<div class="line"><span class="key">🔢 房源编号:</span><span class="val"><code>' + esc(r.property_id) + '</code></span></div>' +
+      (r.update_count > 0 ? '<div style="margin-top:3px"><span class="tag-duplicate">🔄 已更新 ' + r.update_count + ' 次</span></div>' : '') +
+    '</div>';
   }).join('');
 }
 
@@ -537,22 +539,21 @@ function renderCards() {
       ? esc(r.listing_price_raw) : (r.listing_price ? r.listing_price + '万' : '--');
     const showTransaction = r.transaction_price_raw && r.transaction_price_raw !== String(r.transaction_price)
       ? esc(r.transaction_price_raw) : (r.transaction_price ? r.transaction_price + '万' : '--');
-    return `<div class="broadcast-card">
-      <div class="line"><span class="key">🏢 楼盘:</span><span class="val">${esc(r.building)}</span></div>
-      <div class="line"><span class="key">📐 面积:</span><span class="val">${r.area ? r.area + '㎡' : '--'}</span></div>
-      <div class="line"><span class="key">🔧 装修:</span><span class="val">${esc(r.decoration) || '--'}</span></div>
-      <div class="line"><span class="key">👤 维护人:</span><span class="val">${esc(r.maintainer) || '--'}</span></div>
-      <div class="line"><span class="key">🏷 挂牌价:</span><span class="val">${showListing}</span></div>
-      <div class="line"><span class="key">💰 成交价:</span><span class="price-tag">${showTransaction}</span></div>
-      <div class="line"><span class="key">🏠 成交公司:</span><span class="val">${esc(r.company)}</span></div>
-      <div class="line"><span class="key">📅 成交时间:</span><span class="val">${esc(r.date)}</span></div>
-      <div class="line"><span class="key">🔢 房源编号:</span><span class="val"><code>${esc(r.property_id)}</code></span></div>
-      <div style="margin-top:4px;display:flex;gap:4px">
-        ${r.update_count > 0 ? `<span class="tag-duplicate">🔄 更新${r.update_count}次</span>` : '<span style="color:#16a34a;font-size:.72rem">✨ 新录入</span>'}
-        <button class="btn btn-sm btn-warning" onclick="showHistory('${r.id}')" ${r.price_history?.length ? '' : 'disabled'}>📜</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteRecord('${esc(r.property_id)}')">✕</button>
-      </div>
-    </div>`;
+    return '<div class="broadcast-card">' +
+      '<div class="line"><span class="key">🏢 楼盘:</span><span class="val">' + esc(r.building) + '</span></div>' +
+      '<div class="line"><span class="key">📐 面积:</span><span class="val">' + (r.area ? r.area + '㎡' : '--') + '</span></div>' +
+      '<div class="line"><span class="key">🔧 装修:</span><span class="val">' + esc(r.decoration || '--') + '</span></div>' +
+      '<div class="line"><span class="key">👤 维护人:</span><span class="val">' + esc(r.maintainer || '--') + '</span></div>' +
+      '<div class="line"><span class="key">🏷 挂牌价:</span><span class="val">' + showListing + '</span></div>' +
+      '<div class="line"><span class="key">💰 成交价:</span><span class="price-tag">' + showTransaction + '</span></div>' +
+      '<div class="line"><span class="key">🏠 成交公司:</span><span class="val">' + esc(r.company) + '</span></div>' +
+      '<div class="line"><span class="key">📅 成交时间:</span><span class="val">' + esc(r.date) + '</span></div>' +
+      '<div class="line"><span class="key">🔢 房源编号:</span><span class="val"><code>' + esc(r.property_id) + '</code></span></div>' +
+      '<div style="margin-top:4px;display:flex;gap:4px">' +
+        (r.update_count > 0 ? '<span class="tag-duplicate">🔄 更新' + r.update_count + '次</span>' : '<span style="color:#16a34a;font-size:.72rem">✨ 新录入</span>') +
+        '<button class="btn btn-sm btn-warning" onclick="showHistory(\'' + r.id + '\')" ' + (r.price_history?.length ? '' : 'disabled') + '>📜</button>' +
+        '<button class="btn btn-sm btn-danger" onclick="deleteRecord(\'' + esc(r.property_id) + '\')">✕</button>' +
+      '</div></div>';
   }).join('');
 }
 
@@ -578,23 +579,24 @@ function parseDate(str) {
   return null;
 }
 
-// ==================== CONFIG ====================
-function showConfig() {
-  const { url, key } = getConfig();
-  document.getElementById('configUrl').value = url || '';
-  document.getElementById('configKey').value = key || '';
-  document.getElementById('configOverlay').style.display = 'flex';
+// ==================== HISTORY ====================
+function showHistory(id) {
+  const r = records.find(x => x.id === id);
+  if (!r || !r.price_history?.length) return;
+  const popup = document.getElementById('historyPopup');
+  const content = document.getElementById('historyContent');
+  let html = '<p><strong>' + esc(r.building) + '</strong> · 编号: ' + esc(r.property_id) + '</p>';
+  html += '<p>当前成交价: <strong style="color:#059669">' + (r.transaction_price_raw || (r.transaction_price ? r.transaction_price + '万' : '--')) + '</strong></p><hr style="margin:8px 0">';
+  html += '<table style="width:100%;font-size:.78rem"><thead><tr><th>#</th><th>历史成交价</th><th>时间</th></tr></thead><tbody>';
+  r.price_history.forEach((h, i) => {
+    html += '<tr><td>' + (i+1) + '</td><td style="color:#dc2626">' + h.price + '</td><td>' + (h.date || h.recordedAt?.slice(0,10) || '--') + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  content.innerHTML = html;
+  popup.classList.add('open');
 }
-
-function saveConfig() {
-  const url = document.getElementById('configUrl').value.trim();
-  const key = document.getElementById('configKey').value.trim();
-  if (!url || !key) { toast('请填写完整', 'warn'); return; }
-  localStorage.setItem('sb_url', url);
-  localStorage.setItem('sb_key', key);
-  document.getElementById('configOverlay').style.display = 'none';
-  initSupabase();
-  toast('配置已保存，正在连接云端...', 'success');
+function closeHistory() {
+  document.getElementById('historyPopup').classList.remove('open');
 }
 
 // ==================== EXPORT CSV ====================
@@ -614,33 +616,12 @@ function exportCSV() {
       return str.includes(',') || str.includes('"') ? '"' + str.replace(/"/g,'""') + '"' : str;
     }).join(',')
   ).join('\n');
-
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url;
-  a.download = `成交数据_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = '成交数据_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click(); URL.revokeObjectURL(url);
-  toast(`已导出 ${records.length} 条记录 → WPS可直接打开`, 'success');
-}
-
-// ==================== HISTORY ====================
-function showHistory(id) {
-  const r = records.find(x => x.id === id);
-  if (!r || !r.price_history?.length) return;
-  const popup = document.getElementById('historyPopup');
-  const content = document.getElementById('historyContent');
-  let html = `<p><strong>${esc(r.building)}</strong> · 编号: ${esc(r.property_id)}</p>`;
-  html += `<p>当前成交价: <strong style="color:#059669">${r.transaction_price_raw || (r.transaction_price ? r.transaction_price + '万' : '--')}</strong></p><hr style="margin:8px 0">`;
-  html += `<table style="width:100%;font-size:.78rem"><thead><tr><th>#</th><th>历史成交价</th><th>时间</th></tr></thead><tbody>`;
-  r.price_history.forEach((h, i) => {
-    html += `<tr><td>${i+1}</td><td style="color:#dc2626">${h.price}</td><td>${h.date || h.recordedAt?.slice(0,10) || '--'}</td></tr>`;
-  });
-  html += `</tbody></table>`;
-  content.innerHTML = html;
-  popup.classList.add('open');
-}
-function closeHistory() {
-  document.getElementById('historyPopup').classList.remove('open');
+  toast('已导出 ' + records.length + ' 条记录 → WPS可直接打开', 'success');
 }
 
 // ==================== MISC ====================
@@ -664,24 +645,15 @@ function toast(msg, type) {
   el.textContent = msg;
   el.className = 'toast ' + (type || '') + ' show';
   clearTimeout(el._t);
-  el._t = setTimeout(() => { el.className = 'toast'; }, 2500);
+  el._t = setTimeout(function() { el.className = 'toast'; }, 2500);
 }
 
 function loadDemo() {
-  document.getElementById('pasteInput').value = `成交播报
-楼盘:星澜之城2-523
-面积：54.51
-装修：简装
-维护人：付铠铭
-挂牌价: 138
-成交价: 122
-成交公司:贝壳德佑
-成交时间：2026.6.11
-房源编号：103147774694`;
-  toast('已填入示例数据', 'success');
+  document.getElementById('pasteInput').value = '成交播报\n楼盘:星澜之城2-523\n面积：54.51\n装修：简装\n维护人：付铠铭\n挂牌价: 138\n成交价: 122\n成交公司:贝壳德佑\n成交时间：2026.6.11\n房源编号：103147774694';
+  toast('已填入示例数据，点击"解析并录入"试试', 'success');
 }
 
-// ==================== INIT ====================
+// ==================== KEYBOARD SHORTCUT ====================
 document.getElementById('pasteInput').addEventListener('keydown', function(e) {
   if (e.ctrlKey && e.key === 'Enter') parseAndSave();
 });
@@ -689,7 +661,10 @@ document.getElementById('historyPopup').addEventListener('click', function(e) {
   if (e.target === this) closeHistory();
 });
 
-initSupabase();
+// ==================== INIT ====================
+console.log('🏠 成交数据管理 v2 启动中...');
+console.log('   API:', SUPABASE_URL);
+loadAllData();
 </script>
 </body>
 </html>
