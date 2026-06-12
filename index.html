@@ -110,7 +110,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.6</span></h1>
+    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.7</span></h1>
     <span class="status"><span class="dot loading" id="connDot"></span><span id="connText">检测连接...</span></span>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -160,7 +160,7 @@
         <input type="text" id="searchInput" placeholder="🔍 搜索楼盘/编号/维护人..." oninput="renderAll()">
         <span style="font-size:.75rem;color:var(--text2)" id="resultCount"></span>
       </div>
-      <div class="table-wrap" id="tableView"><table><thead><tr><th>房源编号</th><th>楼盘</th><th>面积</th><th>装修</th><th>维护人</th><th>挂牌价</th><th>成交价</th><th>成交公司</th><th>成交时间</th><th>操作</th></tr></thead><tbody id="tableBody"></tbody></table></div>
+      <div class="table-wrap" id="tableView"><table><thead><tr><th>房源编号</th><th>楼盘</th><th>房号</th><th>面积</th><th>装修</th><th>维护人</th><th>挂牌价</th><th>成交价</th><th>成交公司</th><th>成交时间</th><th>操作</th></tr></thead><tbody id="tableBody"></tbody></table></div>
       <div id="cardsView" style="display:none"><div class="broadcast-list" id="cardsList"></div></div>
     </div>
   </div>
@@ -300,10 +300,6 @@ function parseBroadcast(text) {
       date: /(?:签约时间|签约日期|成交时间|成交日期|时间)\s*[:：]\s*(.+)/i,
       propertyId: /(?:房源编码|房源编号|物业编号|房屋编号|编号|房源号|房源ID)\s*[:：]\s*(.+)/i,
     };
-    // Combine building + room number if both exist
-    if (entry.building && entry.room) {
-      entry.building = entry.building + '-' + entry.room;
-    }
     for (const [key, regex] of Object.entries(patterns)) {
       const match = block.match(regex);
       if (match) entry[key] = match[1].trim();
@@ -382,6 +378,7 @@ async function parseAndSave() {
 
         const updated = {
           building: entry.building || existing.building,
+          room: entry.room || existing.room || '',
           area: area || existing.area,
           decoration: entry.decoration || existing.decoration || '',
           maintainer: entry.maintainer || existing.maintainer || '',
@@ -402,6 +399,7 @@ async function parseAndSave() {
         const record = {
           property_id: entry.propertyId || '',
           building: entry.building || '',
+          room: entry.room || '',
           area: area || null,
           decoration: entry.decoration || '',
           maintainer: entry.maintainer || '',
@@ -490,6 +488,7 @@ function renderTable() {
     return '<tr>' +
       '<td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:.75rem">' + esc(r.property_id || '--') + '</code></td>' +
       '<td><strong>' + esc(r.building || '--') + '</strong></td>' +
+      '<td>' + esc(r.room || '--') + '</td>' +
       '<td>' + (r.area ? r.area + '㎡' : '--') + '</td>' +
       '<td>' + esc(r.decoration || '--') + '</td>' +
       '<td>' + esc(r.maintainer || '--') + '</td>' +
@@ -518,6 +517,7 @@ function renderBroadcasts() {
       ? esc(r.transaction_price_raw) : (r.transaction_price ? r.transaction_price + '万' : '--');
     return '<div class="broadcast-card">' +
       '<div class="line"><span class="key">🏢 楼盘:</span><span class="val">' + esc(r.building) + '</span></div>' +
+      '<div class="line"><span class="key">🚪 房号:</span><span class="val">' + esc(r.room || '--') + '</span></div>' +
       '<div class="line"><span class="key">📐 面积:</span><span class="val">' + (r.area ? r.area + '㎡' : '--') + '</span></div>' +
       '<div class="line"><span class="key">🔧 装修:</span><span class="val">' + esc(r.decoration || '--') + '</span></div>' +
       '<div class="line"><span class="key">👤 维护人:</span><span class="val">' + esc(r.maintainer || '--') + '</span></div>' +
@@ -545,6 +545,7 @@ function renderCards() {
       ? esc(r.transaction_price_raw) : (r.transaction_price ? r.transaction_price + '万' : '--');
     return '<div class="broadcast-card">' +
       '<div class="line"><span class="key">🏢 楼盘:</span><span class="val">' + esc(r.building) + '</span></div>' +
+      '<div class="line"><span class="key">🚪 房号:</span><span class="val">' + esc(r.room || '--') + '</span></div>' +
       '<div class="line"><span class="key">📐 面积:</span><span class="val">' + (r.area ? r.area + '㎡' : '--') + '</span></div>' +
       '<div class="line"><span class="key">🔧 装修:</span><span class="val">' + esc(r.decoration || '--') + '</span></div>' +
       '<div class="line"><span class="key">👤 维护人:</span><span class="val">' + esc(r.maintainer || '--') + '</span></div>' +
@@ -606,9 +607,9 @@ function closeHistory() {
 // ==================== EXPORT CSV ====================
 function exportCSV() {
   if (records.length === 0) { toast('没有数据可导出', 'warn'); return; }
-  const headers = ['房源编号','楼盘','面积(㎡)','装修','维护人','挂牌价','成交价','成交公司','成交时间','更新次数'];
+  const headers = ['房源编号','楼盘','房号','面积(㎡)','装修','维护人','挂牌价','成交价','成交公司','成交时间','更新次数'];
   const rows = records.map(r => [
-    r.property_id, r.building, r.area || '', r.decoration, r.maintainer,
+    r.property_id, r.building, r.room || '', r.area || '', r.decoration, r.maintainer,
     r.listing_price_raw || (r.listing_price ? r.listing_price + '万' : ''),
     r.transaction_price_raw || (r.transaction_price ? r.transaction_price + '万' : ''),
     r.company, r.date, r.update_count || 0
