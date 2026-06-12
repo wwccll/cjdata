@@ -209,27 +209,24 @@
 
 <script>
 // ==================== SUPABASE SETUP ====================
+// 内置连接信息（publishable key 可安全公开在客户端）
+const SUPABASE_URL = 'https://nyhkczxlzpsyecsnscgt.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7iCQ17nrZVSDYfZKMP3TXQ_mQUpw8Sm';
 let supabase = null;
 
 function getConfig() {
   try {
-    const url = localStorage.getItem('sb_url');
-    const key = localStorage.getItem('sb_key');
+    const url = localStorage.getItem('sb_url') || SUPABASE_URL;
+    const key = localStorage.getItem('sb_key') || SUPABASE_KEY;
     return { url, key };
-  } catch(e) { return {}; }
+  } catch(e) { return { url: SUPABASE_URL, key: SUPABASE_KEY }; }
 }
 
 function initSupabase() {
   const { url, key } = getConfig();
-  if (url && key) {
-    supabase = window.supabase.createClient(url, key);
-    checkConnection();
-    loadAllData();
-  } else {
-    document.getElementById('connDot').className = 'dot offline';
-    document.getElementById('connText').textContent = '未配置数据库';
-    showConfig();
-  }
+  supabase = window.supabase.createClient(url, key);
+  checkConnection();
+  loadAllData();
 }
 
 async function checkConnection() {
