@@ -110,7 +110,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.1</span></h1>
+    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.3</span></h1>
     <span class="status"><span class="dot loading" id="connDot"></span><span id="connText">检测连接...</span></span>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -289,16 +289,16 @@ function parseBroadcast(text) {
   function extract(block) {
     const entry = {};
     const patterns = {
-      building: /(?:地址|楼盘地址|楼盘名称|楼盘)\s*[:：]\s*(.+)/i,
-      room: /房号\s*[:：]\s*(.+)/i,
-      area: /面积\s*[:：]\s*(.+)/i,
-      decoration: /装修\s*[:：]\s*(.+)/i,
-      maintainer: /维护人\s*[:：]\s*(.+)/i,
-      listingPrice: /(?:挂价|挂牌价格|挂牌价)\s*[:：]\s*(.+)/i,
-      transactionPrice: /(?:成交价格|成交价)\s*[:：]\s*(.+)/i,
-      company: /(?:成交公司|公司)\s*[:：]\s*(.+)/i,
-      date: /(?:成交时间|成交日期|成交时间)\s*[:：]\s*(.+)/i,
-      propertyId: /房源编号\s*[:：]\s*(.+)/i,
+      building: /(?:地址|楼盘地址|楼盘名称|楼盘|小区|小区名称|项目名称)\s*[:：]\s*(.+)/i,
+      room: /(?:房号|门牌号|房间号|室号|栋号)\s*[:：]\s*(.+)/i,
+      area: /(?:面积|建筑面积|套内面积|平米)\s*[:：]\s*(.+)/i,
+      decoration: /(?:装修情况|装修程度|装修)\s*[:：]\s*(.+)/i,
+      maintainer: /(?:维护人|责任人|经纪人|负责人|管家)\s*[:：]\s*(.+)/i,
+      listingPrice: /(?:业主报价|挂牌价格|挂牌价|挂价|报价|售价)\s*[:：]\s*(.+)/i,
+      transactionPrice: /(?:最终成交价|实际成交价|成交价格|成交价|签约价)\s*[:：]\s*(.+)/i,
+      company: /(?:签约公司|中介公司|成交公司|平台|公司)\s*[:：]\s*(.+)/i,
+      date: /(?:签约时间|签约日期|成交时间|成交日期|时间)\s*[:：]\s*(.+)/i,
+      propertyId: /(?:房源编号|编号|ID|房源号)\s*[:：]\s*(.+)/i,
     };
     // Combine building + room number if both exist
     if (entry.building && entry.room) {
