@@ -110,7 +110,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.7</span></h1>
+    <h1>📋 成交数据管理 <span style="font-size:.6rem;opacity:.6">v2.8</span></h1>
     <span class="status"><span class="dot loading" id="connDot"></span><span id="connText">检测连接...</span></span>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -289,7 +289,7 @@ function parseBroadcast(text) {
   function extract(block) {
     const entry = {};
     const patterns = {
-      building: /(?:地址|楼盘地址|楼盘名称|楼盘|小区|小区名称|项目名称)\s*[:：]\s*(.+)/i,
+      building: /(?:地址|楼盘地址|楼盘名称|楼盘播报|楼盘|小区|小区名称|项目名称)\s*[:：]\s*(.+)/i,
       room: /(?:房号|门牌号|房间号|室号|栋号)\s*[:：]\s*(.+)/i,
       area: /(?:面积|建筑面积|套内面积|平米)\s*[:：]\s*(.+)/i,
       decoration: /(?:装修情况|装修程度|装修)\s*[:：]\s*(.+)/i,
@@ -579,8 +579,15 @@ function updateStats() {
 
 function parseDate(str) {
   if (!str) return null;
-  const m = str.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  // YYYY.M.D or YYYY-M-D or YYYY/M/D
+  let m = str.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
   if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  // M月D日 (assume current year)
+  m = str.match(/(\d{1,2})月(\d{1,2})日/);
+  if (m) return new Date(new Date().getFullYear(), +m[1] - 1, +m[2]);
+  // M.D or M-D (assume current year)
+  m = str.match(/^(\d{1,2})[.\-](\d{1,2})$/);
+  if (m) return new Date(new Date().getFullYear(), +m[1] - 1, +m[2]);
   return null;
 }
 
