@@ -12,7 +12,7 @@ from datetime import datetime
 # ============================================================
 # 配置
 # ============================================================
-SOURCE_FILE = "成交数据管理_个人版.html"  # 源文件
+SOURCE_FILE = "tool.html"  # 源文件
 
 # 占位标记（源文件里要有这个）
 PLACEHOLDER_LINE = 'h1>成交数据管理 <span style="font-size:.6rem;opacity:.7">个人版 v3.1</span></h1>'
