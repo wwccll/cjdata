@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成交数据管理 · 房产经纪人效率工具</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23059669'/><text y='.9em' font-size='60' text-anchor='middle' x='50' fill='white'>🏠</text></svg>">
+<style>
+  :root{--green:#059669;--dark:#064e3b;--bg:#f8fafb;--card:#fff;--text:#1e293b;--text2:#64748b;--border:#e2e8f0}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
+
+  /* Hero */
+  .hero{background:linear-gradient(150deg,#064e3b 0%,#059669 40%,#0d9488 100%);color:#fff;padding:60px 20px 50px;text-align:center;position:relative;overflow:hidden}
+  .hero::after{content:'';position:absolute;top:-50%;left:-30%;width:160%;height:200%;background:radial-gradient(ellipse,rgba(255,255,255,.08) 0%,transparent 60%);pointer-events:none}
+  .hero h1{font-size:2rem;font-weight:700;margin-bottom:10px;position:relative;z-index:1}
+  .hero .sub{font-size:1.05rem;opacity:.9;position:relative;z-index:1}
+  .hero .badge{display:inline-block;background:rgba(255,255,255,.2);padding:4px 14px;border-radius:20px;font-size:.8rem;margin-top:14px;position:relative;z-index:1;backdrop-filter:blur(4px)}
+  .hero .price-tag{font-size:2.5rem;font-weight:800;margin-top:16px;position:relative;z-index:1}
+  .hero .price-tag span{font-size:1rem;font-weight:400;opacity:.8}
+
+  /* Sections */
+  .section{max-width:860px;margin:0 auto;padding:40px 20px}
+  .section h2{font-size:1.3rem;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+
+  /* Feature cards */
+  .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .feat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .feat .icon{font-size:1.6rem;margin-bottom:8px}
+  .feat h3{font-size:.95rem;margin-bottom:4px}
+  .feat p{font-size:.8rem;color:var(--text2);line-height:1.6}
+
+  /* Demo area */
+  .demo-box{background:var(--card);border:2px dashed #d1fae5;border-radius:14px;padding:24px}
+  .demo-box textarea{width:100%;height:140px;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.83rem;font-family:inherit;line-height:1.7;resize:vertical;background:#fafbfc}
+  .demo-box textarea:focus{outline:none;border-color:var(--green)}
+  .demo-box .btn-row{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .btn{padding:9px 18px;border:none;border-radius:8px;font-size:.85rem;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
+  .btn-primary{background:var(--green);color:#fff}
+  .btn-primary:hover{background:#047857}
+  .btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}
+  .demo-result{margin-top:12px;font-size:.8rem;display:none}
+  .demo-result table{width:100%;border-collapse:collapse;font-size:.78rem}
+  .demo-result th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border)}
+  .demo-result td{padding:6px 8px;border-bottom:1px solid var(--border)}
+
+  /* Buy CTA */
+  .buy-section{background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%);border:2px solid #6ee7b7;border-radius:16px;padding:30px;text-align:center}
+  .buy-section .price{font-size:2.2rem;font-weight:800;color:var(--green)}
+  .buy-section .price small{font-size:.85rem;color:var(--text2);font-weight:400}
+  .buy-section .steps{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin:20px 0}
+  .buy-section .step{text-align:center;min-width:90px}
+  .buy-section .step .num{width:36px;height:36px;border-radius:50%;background:var(--green);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;margin-bottom:6px}
+  .buy-section .step .txt{font-size:.8rem;color:var(--text2)}
+  .btn-buy{display:inline-block;background:var(--green);color:#fff;padding:14px 40px;border-radius:10px;font-size:1.05rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;transition:all .2s}
+  .btn-buy:hover{background:#047857;transform:translateY(-1px);box-shadow:0 8px 25px rgba(5,150,105,.3)}
+
+  /* FAQ */
+  .faq-item{margin-bottom:14px}
+  .faq-item .q{font-weight:600;font-size:.9rem}
+  .faq-item .a{font-size:.82rem;color:var(--text2);margin-top:3px}
+
+  /* Footer */
+  .footer{text-align:center;padding:30px;color:var(--text2);font-size:.75rem}
+
+  /* Comparison table */
+  .compare-table{width:100%;border-collapse:collapse;font-size:.83rem}
+  .compare-table th,.compare-table td{padding:10px 14px;border-bottom:1px solid var(--border);text-align:center}
+  .compare-table th{background:#f1f5f9;font-weight:600}
+  .compare-table .check{color:var(--green);font-weight:700}
+  .compare-table .cross{color:#ef4444}
+
+  @media(max-width:600px){
+    .hero h1{font-size:1.5rem}
+    .hero .price-tag{font-size:2rem}
+    .section{padding:28px 14px}
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <h1>🏠 成交数据管理 · 个人版</h1>
+  <p class="sub">粘贴成交播报 → 自动识别 → 一键生成数据表格</p>
+  <div class="badge">🟢 完全离线 · 数据私有 · 无需安装</div>
+  <div class="price-tag">99<span> 元 / 永久买断</span></div>
+</section>
+
+<!-- FEATURES -->
+<section class="section">
+  <h2>✨ 核心功能</h2>
+  <div class="features">
+    <div class="feat">
+      <div class="icon">🧠</div>
+      <h3>智能解析引擎</h3>
+      <p>三遍扫描：正则匹配 + 自由格式推断 + 行级扫描。粘贴即识别，无论有没有标签。</p>
+    </div>
+    <div class="feat">
+      <div class="icon">🔒</div>
+      <h3>数据完全私有</h3>
+      <p>数据存在你浏览器的本地存储，不经过任何服务器。你电脑上的数据，只有你看得到。</p>
+    </div>
+    <div class="feat">
+      <div class="icon">📊</div>
+      <h3>自动统计分析</h3>
+      <p>总成交数、本月成交、成交均价、更新次数，四个核心指标实时更新。</p>
+    </div>
+    <div class="feat">
+      <div class="icon">📥</div>
+      <h3>WPS/Excel 互通</h3>
+      <p>一键导出 CSV，WPS 直接打开。也能从 CSV 导入回来。备份恢复一键完成。</p>
+    </div>
+    <div class="feat">
+      <div class="icon">🔄</div>
+      <h3>价格变动追踪</h3>
+      <p>同一房源再次录入时自动比对价格，价格变了才记录历史，不变则静默合并不重复。</p>
+    </div>
+    <div class="feat">
+      <div class="icon">📱</div>
+      <h3>手机电脑都能用</h3>
+      <p>一个 HTML 文件，40KB。电脑浏览器、手机浏览器都能打开。数据各自独立。</p>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE DEMO -->
+<section class="section">
+  <h2>🎬 在线体验</h2>
+  <p style="color:var(--text2);font-size:.82rem;margin-bottom:12px">粘贴一段成交播报，看看识别效果（本页为只读演示，不保存数据）</p>
+  <div class="demo-box">
+    <textarea id="demoInput" placeholder="粘贴成交播报试试，比如：&#10;成交播报&#10;楼盘:星澜之城2-523&#10;面积：54.51&#10;挂牌价: 138万&#10;成交价: 122万&#10;成交公司:贝壳德佑&#10;成交时间：2026.6.11&#10;房源编号：103147774694&#10;&#10;也可以试试无标签格式：&#10;金沙湖畔 7-1102  89平 精装  220万→198万  链家  5.28"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="runDemo()">🔍 识别看看</button>
+      <button class="btn btn-outline" onclick="loadDemo1()">📋 填入示例1</button>
+      <button class="btn btn-outline" onclick="loadDemo2()">📋 填入示例2</button>
+    </div>
+    <div class="demo-result" id="demoResult"></div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="section">
+  <h2>📊 vs 手动记录</h2>
+  <table class="compare-table">
+    <thead><tr><th></th><th>手动录入 Excel</th><th>本工具</th></tr></thead>
+    <tbody>
+      <tr><td>录入速度</td><td>3-5 分钟/条</td><td class="check">3 秒/条</td></tr>
+      <tr><td>格式适配</td><td>全靠人眼看</td><td class="check">50+ 别名自动识别</td></tr>
+      <tr><td>重复去重</td><td class="cross">容易录重复</td><td class="check">自动去重合并</td></tr>
+      <tr><td>价格变动</td><td class="cross">覆盖了就没了</td><td class="check">自动记录历史</td></tr>
+      <tr><td>统计汇总</td><td class="cross">手动算</td><td class="check">实时自动</td></tr>
+      <tr><td>数据隐私</td><td>本地文件</td><td class="check">浏览器本地存储</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- BUY -->
+<section class="section">
+  <div class="buy-section">
+    <h2>💰 购买方式</h2>
+    <div class="price">99 元 <small>/ 永久使用</small></div>
+    <p style="color:var(--text2);font-size:.83rem;margin-top:4px">一次买断，后续升级免费</p>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><div class="txt">微信/支付宝付款</div></div>
+      <div class="step"><div class="num">2</div><div class="txt">收到 HTML 文件</div></div>
+      <div class="step"><div class="num">3</div><div class="txt">浏览器打开<br>开始使用</div></div>
+    </div>
+    <p style="font-size:.82rem;color:var(--text2);margin-bottom:14px">
+      👇 扫码加微信，备注「成交工具」
+    </p>
+    <!-- 这里放你的微信/支付宝收款码截图 -->
+    <div style="width:200px;height:200px;border:2px dashed #d1fae5;border-radius:12px;margin:0 auto;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:.78rem;background:#fff">
+      [ 在此放置<br>微信收款码 ]
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section">
+  <h2>🙋 常见问题</h2>
+  <div class="faq-item"><div class="q">Q: 需要安装什么吗？</div><div class="a">不需要。一个 HTML 文件，双击浏览器打开就能用。不安装、不注册、不联网。</div></div>
+  <div class="faq-item"><div class="q">Q: 我的数据安全吗？</div><div class="a">数据存在你自己的浏览器本地存储里（localStorage），完全不经过任何服务器。你发给别人的文件是空的，打开后存的是他自己的数据。</div></div>
+  <div class="faq-item"><div class="q">Q: 换电脑了怎么办？</div><div class="a">用「备份」功能导出 JSON 文件，新电脑上「恢复」导入，数据一秒迁移。</div></div>
+  <div class="faq-item"><div class="q">Q: 支持什么格式的成交播报？</div><div class="a">标签格式（楼盘:xxx）、无标签自由格式（楼盘名+数字）、混合格式都支持。50+ 字段别名，常见的房产术语都能识别。</div></div>
+  <div class="faq-item"><div class="q">Q: 不满意能退吗？</div><div class="a">你先在这个页面试用演示版，满意再买。购买后功能问题免费解决。</div></div>
+</section>
+
+<div class="footer">
+  © 2026 成交数据管理 · 个人版 · 房产经纪人的效率工具
+</div>
+
+<script>
+// 内嵌轻量解析器（只读演示用）
+function parseDemo(text) {
+  const t = text.replace(/：/g, ':');
+  const blocks = t.split(/成交播报/i).filter(b => b.trim());
+  if (blocks.length === 0 && text.trim()) blocks.push(text);
+  const results = [];
+
+  const patterns = {
+    building: /(?:楼盘名称|楼盘地址|项目名称|楼盘播报|楼盘|小区名称|小区|项目|地址)\s*[:：]\s*(.+)/i,
+    room: /(?:房号|门牌号|房间号|室号|栋号|单元号|楼层)\s*[:：]\s*(.+)/i,
+    area: /(?:建筑面积|套内面积|面积|建面|平米|平方)\s*[:：]\s*(.+)/i,
+    decoration: /(?:装修情况|装修程度|装修|装潢)\s*[:：]\s*(.+)/i,
+    maintainer: /(?:维护人|责任人|经纪人|负责人|管家|联系人|维护)\s*[:：]\s*(.+)/i,
+    listingPrice: /(?:业主报价|挂牌价格|挂牌价|挂牌|挂价|报价|售价|房东报价)\s*[:：]\s*(.+)/i,
+    transactionPrice: /(?:最终成交价|实际成交价|签约价格|成交价格|成交价|签约价|成交|总价)\s*[:：]\s*(.+)/i,
+    company: /(?:签约公司|中介公司|成交公司|平台公司|中介|公司|平台)\s*[:：]\s*(.+)/i,
+    date: /(?:签约时间|签约日期|成交时间|成交日期|签约|日期|时间)\s*[:：]\s*(.+)/i,
+    propertyId: /(?:房源编码|房源ID|房源编号|物业编号|房屋编号|房源号|编号|ID)\s*[:：]\s*(.+)/i,
+  };
+
+  for (const block of blocks) {
+    const entry = {};
+    for (const [key, re] of Object.entries(patterns)) {
+      const m = block.match(re);
+      if (m) entry[key] = m[1].trim();
+    }
+
+    // Free format fallback: find building name + room number
+    if (!entry.building) {
+      const brMatch = block.match(/([一-龥a-zA-Z]{2,20}(?:城|苑|园|府|郡|湾|庭|筑|庄|邸|寓|居|舍|馆|第|座|区|村|堡|里|岸|湖|山|景|林|岛|院|台|阁|楼|场|中心|广场|天地|新城|花园|公寓|华庭|雅苑|豪庭|名都|花苑|大厦|新苑|佳苑))\s*(\d[\d\-\s–—A-Za-z\/\.]{1,25})?/);
+      if (brMatch) { entry.building = brMatch[1].trim(); if (brMatch[2]) entry.room = brMatch[2].trim(); }
+    }
+
+    // Free format: area (数字+平/㎡)
+    if (!entry.area) {
+      const am = block.match(/(\d+\.?\d*)\s*(?:平|㎡|m2|平米|平方)/i);
+      if (am) entry.area = am[1];
+    }
+
+    // Free format: price arrow (138万→122万)
+    if (!entry.transactionPrice) {
+      const pm = block.match(/(\d+\.?\d*)\s*万?\s*[→\->–—]+\s*(\d+\.?\d*)\s*万?/);
+      if (pm) { entry.listingPrice = pm[1]; entry.transactionPrice = pm[2]; }
+    }
+
+    // Free format: decoration
+    if (!entry.decoration) {
+      const dm = block.match(/(毛坯|简装|精装|豪装|中装|清水|拎包入住)/);
+      if (dm) entry.decoration = dm[1];
+    }
+
+    // Free format: company
+    if (!entry.company) {
+      const cm = block.match(/(?:贝壳|链家|德佑|我爱我家|中原|21世纪|太平洋|安居客|搜房|房天下|麦田|合富|美联|Q房|乐有家|裕丰)/i);
+      if (cm) entry.company = cm[0];
+    }
+
+    // Free format: date
+    if (!entry.date) {
+      const dtm = block.match(/(\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2})/) || block.match(/(\d{1,2}月\d{1,2}[日号])/) || block.match(/(\d{1,2}[.\-]\d{1,2})(?:$|\s)/);
+      if (dtm) entry.date = dtm[1];
+    }
+
+    // Free format: property ID (10-20 digits)
+    if (!entry.propertyId) {
+      const idm = block.match(/(?:^|\s)(\d{10,20})(?:\s|$)/);
+      if (idm) entry.propertyId = idm[1];
+    }
+
+    // Split building-room from building field
+    if (entry.building && !entry.room) {
+      const m = entry.building.match(/^(.+?)\s*(\d[\d\-\s–—A-Za-z\/\.]{1,25})$/);
+      if (m) { entry.building = m[1].trim(); entry.room = m[2].trim(); }
+    }
+
+    if (entry.propertyId || entry.building) results.push(entry);
+  }
+  return results;
+}
+
+function runDemo() {
+  const input = document.getElementById('demoInput').value.trim();
+  const result = document.getElementById('demoResult');
+  if (!input) { result.style.display='block'; result.innerHTML='<p style="color:#b91c1c">请先粘贴成交播报文本</p>'; return; }
+  const parsed = parseDemo(input);
+  result.style.display='block';
+  if (parsed.length===0) {
+    result.innerHTML='<p style="color:#b91c1c">未识别到数据，请确认包含楼盘或房源编号信息</p>';
+    return;
+  }
+  result.innerHTML = '<p style="color:#059669;margin-bottom:8px">✅ 识别到 <b>'+parsed.length+'</b> 条记录（← 正式版会自动保存，这里只是演示）</p>' +
+    '<table><thead><tr><th>楼盘</th><th>房号</th><th>面积</th><th>装修</th><th>挂牌价</th><th>成交价</th><th>公司</th><th>时间</th></tr></thead><tbody>' +
+    parsed.map(p => '<tr>' +
+      '<td><strong>'+esc(p.building||'--')+'</strong></td>' +
+      '<td>'+esc(p.room||'--')+'</td>' +
+      '<td>'+(p.area?p.area+'㎡':'--')+'</td>' +
+      '<td>'+esc(p.decoration||'--')+'</td>' +
+      '<td>'+(p.listingPrice||'--')+'</td>' +
+      '<td style="color:#059669;font-weight:600">'+(p.transactionPrice||'--')+'</td>' +
+      '<td>'+esc(p.company||'--')+'</td>' +
+      '<td>'+esc(p.date||'--')+'</td>' +
+    '</tr>').join('') +
+    '</tbody></table>';
+}
+
+function loadDemo1() {
+  document.getElementById('demoInput').value='成交播报\n楼盘:星澜之城2-523\n面积：54.51\n装修：简装\n维护人：付铠铭\n挂牌价: 138万\n成交价: 122万\n成交公司:贝壳德佑\n成交时间：2026.6.11\n房源编号：103147774694';
+}
+function loadDemo2() {
+  document.getElementById('demoInput').value='成交播报\n星澜之城 2-523 54.51平 简装 138万→122万 贝壳德佑 6.11 103147774694\n\n成交播报\n金沙湖畔7-1102 89平 精装 张经理 220万→198万 链家 2026.5.28 P20260528001';
+}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+</script>
+</body>
+</html>
