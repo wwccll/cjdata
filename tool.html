@@ -170,8 +170,8 @@
   <div class="brand">
     <div class="logo">🏠</div>
     <div>
-      <h1>成交数据管理 <span style="font-size:.6rem;opacity:.7">个人版 v3.1</span></h1>
-      <span class="status"><span class="dot"></span>数据仅存储在您的浏览器本地 · 完全离线 · 永久免费</span>
+      <h1>成交数据管理 <span style="font-size:.6rem;opacity:.7" id="licenseBadge">个人版 v3.1</span></h1>
+      <span class="status"><span class="dot"></span><span id="licenseStatus">数据仅存储在您的浏览器本地</span></span>
     </div>
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1103,6 +1103,21 @@ document.getElementById('historyPopup').addEventListener('click', function(e) {
   }
 
   console.log('浏览器: WeChat='+isWeChat+' Storage='+storageOK + (isWeChat||!storageOK?' [WARN]':' [OK]'));
+})();
+
+// 读取URL参数 -> 专属授权显示
+(function applyLicense() {
+  var params = new URLSearchParams(location.search);
+  var user = params.get('u') || params.get('user') || '';
+  var phone = params.get('p') || params.get('phone') || '';
+  if (user) {
+    var badge = document.getElementById('licenseBadge');
+    var status = document.getElementById('licenseStatus');
+    if (badge) badge.textContent = '授权给：' + decodeURIComponent(user) + (phone ? ' ' + phone : '');
+    if (badge) badge.style.color = '#fbbf24';
+    if (status) status.textContent = '专属授权版 · 数据仅存储在本浏览器';
+    console.log('授权用户: ' + user);
+  }
 })();
 
 console.log('🏠 成交数据管理 个人版 v3.1');
