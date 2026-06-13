@@ -1084,31 +1084,25 @@ document.getElementById('historyPopup').addEventListener('click', function(e) {
 // ============================================================
 // 初始化
 // ============================================================
-// 检测微信/华为/不兼容浏览器
+// 只在微信或 localStorage 真不可用时提示（8秒后自动消失）
 (function checkBrowser() {
   const ua = navigator.userAgent || '';
   const isWeChat = /MicroMessenger/i.test(ua);
-  const isHuawei = /HuaweiBrowser|HUAWEI|Honor|HW|HONOR/i.test(ua);
-  const isUC = /UCBrowser|UCWEB/i.test(ua);
-  const isQQ = /QQBrowser|MQQBrowser/i.test(ua);
-  const isBaidu = /baidubrowser|Baidu/i.test(ua);
-  const isSogou = /SogouMobileBrowser|MetaSr/i.test(ua);
-  const isSafari = /Safari/i.test(ua) && !/Chrome/i.test(ua);
-  const isiOS = /iPhone|iPad|iPod/i.test(ua);
 
-  // 检测 localStorage 是否真的可用
   let storageOK = false;
   try { localStorage.setItem('_test','1'); localStorage.removeItem('_test'); storageOK = true; }
   catch(e) { storageOK = false; }
 
-  // 哪些浏览器需要提醒
-  const needWarn = isWeChat || isHuawei || isUC || isQQ || isBaidu || isSogou || (isiOS && isSafari) || !storageOK;
-
-  if (needWarn) {
+  if (isWeChat || !storageOK) {
     document.getElementById('wechatNotice').style.display = 'block';
+    // 8秒后自动消失
+    setTimeout(function() {
+      var el = document.getElementById('wechatNotice');
+      if (el) el.style.display = 'none';
+    }, 8000);
   }
 
-  console.log('浏览器: WeChat='+isWeChat+' Huawei='+isHuawei+' Storage='+storageOK + (needWarn?' [WARN]':' [OK]'));
+  console.log('浏览器: WeChat='+isWeChat+' Storage='+storageOK + (isWeChat||!storageOK?' [WARN]':' [OK]'));
 })();
 
 console.log('🏠 成交数据管理 个人版 v3.1');
